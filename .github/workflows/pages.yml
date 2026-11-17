@@ -1,0 +1,71 @@
+name: Build ESP32 and Deploy Project V2.2.1 to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'firmware/esp32_local_gateway/**'
+      - 'web/**'
+      - 'dist/hosted/**'
+      - '.github/workflows/pages.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: github-pages
+  cancel-in-progress: true
+
+jobs:
+  build-firmware:
+    name: Build ESP32 firmware and LittleFS image
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.11'
+      - name: Install PlatformIO
+        run: python -m pip install --upgrade pip platformio
+      - name: Compile ESP32 firmware
+        run: pio run -d firmware/esp32_local_gateway
+      - name: Build LittleFS filesystem image
+        run: pio run -d firmware/esp32_local_gateway -t buildfs
+      - name: Verify build outputs
+        shell: bash
+        run: |
+          test -s firmware/esp32_local_gateway/.pio/build/esp32dev/firmware.bin
+          test -s firmware/esp32_local_gateway/.pio/build/esp32dev/littlefs.bin
+      - name: Retain generic CI outputs (no local Wi-Fi credentials)
+        uses: actions/upload-artifact@v7
+        with:
+          name: esp32-v2.2.1-ci-build-output-no-secrets
+          path: firmware/esp32_local_gateway/.pio/build/esp32dev/*.bin
+          if-no-files-found: error
+          retention-days: 30
+
+  deploy-pages:
+    name: Deploy public local-gateway launcher
+    needs: build-firmware
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v6
+      - name: Upload production site
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: dist/hosted
+          include-hidden-files: true
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5

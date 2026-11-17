@@ -1,0 +1,79 @@
+{
+  "release": "2.2.1-publish-ready",
+  "recommended_repository": "SurajYadavx/mitsubishi-qr-plc-supervisory",
+  "recommended_visibility": "public",
+  "existing_repository_untouched": "SurajYadavx/mitsubishi-q-plc-app",
+  "publisher": "scripts/publish_v2_2_1.ps1",
+  "pages_workflow": ".github/workflows/pages.yml",
+  "pages_artifact": "dist/hosted",
+  "expected_pages_url": "https://surajyadavx.github.io/mitsubishi-qr-plc-supervisory/",
+  "site_files": [
+    "dist/hosted/index.html",
+    "dist/hosted/.nojekyll"
+  ],
+  "primary_local_url": "http://<ESP32-IP>/",
+  "hosted_site_role": "launcher only; top-level navigation to ESP32 same-origin application",
+  "physical_write_defaults": {
+    "Q_PLC_WRITES_ENABLED": false,
+    "R_PLC_WRITES_ENABLED": false
+  },
+  "network": {
+    "router": "192.168.3.1",
+    "q_plc": "192.168.3.30:5010",
+    "r_plc": "192.168.3.20:5010 (provisional)",
+    "esp32": "DHCP on RUBY; use LCD/Serial runtime address"
+  },
+  "physical_plc_verification": "pending laboratory commissioning",
+  "review_checks": {
+    "dashboard_js_syntax": "pass",
+    "browser_tests": "165 pass, 0 fail",
+    "launcher_tests": "7 pass, 0 fail",
+    "zip_integrity": "pass: final archive verified with unzip -t after packaging",
+    "python_tests": "partial/blocked: 57 discovery entries attempted; 7 import errors and 1 skipped because required packages are absent in review container",
+    "platformio_build": "not independently run; PlatformIO absent",
+    "physical_hardware": "not tested",
+    "legacy_agent_python_syntax": "pass",
+    "embedded_hmi_html_js": "pass; byte-identical to web source",
+    "embedded_hmi_css": "pass; normalized content matches web source",
+    "safe_secrets_template_tracking": "pass; secrets.example.h included, real secrets.h ignored",
+    "legacy_agent_physical_writes": "fail-closed by default; separate per-PLC opt-in and private PIN required",
+    "git_staging_audit": "pass: 148 staged files; example secrets template included; real secrets and build caches excluded",
+    "github_actions_firmware_gate": "configured; pending first remote run after push; Pages job depends on build job",
+    "esp32_cors_policy": "pass: no wildcard CORS or Private Network Access allow headers; OPTIONS preflight rejected; same-origin local HMI only",
+    "firmware_security_contract_tests": "10 pass, 0 fail"
+  },
+  "notes": [
+    "Hosted launcher does not directly call the local gateway API.",
+    "The ESP32-hosted HMI is the primary local operating mode.",
+    "Do not commit secrets.h, Wi-Fi passwords, operator PINs, private keys or certificates.",
+    "Q and R writes are intentionally disabled by default.",
+    "R-series configuration remains provisional pending physical validation.",
+    "Legacy Python agent physical write code was hardened and now requires LEGACY_Q_PLC_WRITES_ENABLED or LEGACY_R_PLC_WRITES_ENABLED plus the corresponding private operator PIN environment variable; no default PIN remains in that path.",
+    "Firmware Wi-Fi password fallback is empty; copy secrets.example.h to the ignored secrets.h file and configure the local Wi-Fi credentials before flashing.",
+    "ESP32 API does not allow cross-origin browser access; no permissive CORS/PNA headers are emitted. Use the HMI hosted at http://<ESP32-IP>/.",
+    "CI firmware artifacts intentionally omit Wi-Fi secrets and are for compile verification, not direct lab flashing."
+  ],
+  "ci": {
+    "workflow": ".github/workflows/pages.yml",
+    "sequence": [
+      "PlatformIO ESP32 firmware build",
+      "PlatformIO LittleFS image build",
+      "verify firmware.bin and littlefs.bin",
+      "retain binaries as Actions artifact",
+      "deploy dist/hosted to GitHub Pages"
+    ],
+    "pages_deployment_requires_successful_firmware_build": true,
+    "artifact_name": "esp32-v2.2.1-ci-build-output-no-secrets",
+    "artifact_retention_days": 30,
+    "action_versions": {
+      "checkout": "v7",
+      "setup_python": "v7",
+      "upload_artifact": "v7",
+      "configure_pages": "v6",
+      "upload_pages_artifact": "v5",
+      "deploy_pages": "v5"
+    },
+    "pages_artifact_includes_hidden_files": true,
+    "artifact_note": "Generic CI build output only; does not contain the RUBY Wi-Fi password and is not ready to flash. Build locally with ignored secrets.h before deploying to hardware."
+  }
+}

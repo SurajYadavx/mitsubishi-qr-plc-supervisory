@@ -1,0 +1,69 @@
+# GitHub Pages Deployment — Historical Notes
+
+> **HISTORICAL DEPLOYMENT NOTE (SUPERSEDED BY V2.2.1):** This file describes the former static-dashboard deployment process and should not be used to publish the current system. V2.2.1 uses the single workflow `.github/workflows/pages.yml` to publish only `dist/hosted/`, which is a launcher. Follow [`PUBLISH_TO_GITHUB.md`](../PUBLISH_TO_GITHUB.md) and [`hosted-deployment.md`](hosted-deployment.md).
+
+## Repository setup
+
+1. Create a new **public** GitHub repository (or use an existing one)
+2. Push this project to `main`:
+
+```powershell
+cd "D:\Academics\TY - S1\MS\mitsubishi-q-plc-app_ANTIGRAVITY"
+git init
+git remote add origin https://github.com/YOUR_USERNAME/YOUR_REPO.git
+git add .
+git commit -m "Initial project structure — Stage 1"
+git push -u origin main
+```
+
+## Enable GitHub Pages
+
+Because the static web dashboard is located in the `web/` subdirectory, GitHub's default "Deploy from a branch" dropdown (which only supports `/` or `/docs`) cannot directly select `web/`.
+
+Instead, use the included GitHub Actions workflow ([.github/workflows/deploy-pages.yml](../.github/workflows/deploy-pages.yml)):
+
+1. In your GitHub repository, navigate to:
+   **Settings → Pages**
+2. Under **Build and deployment → Source**, select:
+   **GitHub Actions**
+3. Once selected, every push to `main` touching `web/` will automatically build and publish the dashboard to GitHub Pages.
+
+Alternatively, you can manually trigger the deployment from the **Actions** tab on GitHub using the *workflow_dispatch* button.
+
+The published URL will be:
+```
+https://<YOUR_USERNAME>.github.io/<YOUR_REPO>/
+```
+
+Allow 1–2 minutes for the initial deployment to complete. Verify the live page in a browser before closing commissioning.
+
+## MQTT broker WebSocket (WSS)
+
+EMQX Cloud Serverless allows Secure WebSocket (WSS) connections by default on port 8084 with path `/mqtt`.
+No CORS configuration is required because MQTT.js uses standard WebSocket — not CORS-restricted HTTP fetch.
+
+The browser connects directly to the broker using dedicated read-only credentials (`browser_readonly`).
+The broker must allow WebSocket connections on its public hostname (`wss://<cluster-id>.emqxsl.com:8084/mqtt`).
+
+## Security checklist before deploying
+
+- [ ] `.gitignore` excludes `gateway/config/secrets.ini`
+- [ ] `.gitignore` excludes `firmware/plc_monitor/secrets.h`
+- [ ] No PLC IP addresses or TCP ports appear in `web/` files
+- [ ] Browser MQTT credentials are read-only (subscribe-only) accounts
+- [ ] No admin or publisher credentials appear in `web/` files
+- [ ] MQTT.js CDN URL uses HTTPS
+
+## Updating the deployed site
+
+Any push to `main` in the `web/` directory automatically redeploys.
+
+```powershell
+git add web/
+git commit -m "Update dashboard"
+git push
+```
+
+## Custom domain (optional)
+
+Add a `CNAME` file inside `web/` with your domain, then configure DNS per GitHub's documentation.

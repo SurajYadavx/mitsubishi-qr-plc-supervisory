@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0b1220">
+  <meta name="description" content="Open the local Mitsubishi Q/R Series dual-PLC supervisory dashboard hosted by your ESP32 gateway.">
+  <title>Q/R Series Supervisory System — Local Gateway</title>
+  <style>
+    :root{color-scheme:dark;--bg:#0b1220;--panel:#121e30;--panel2:#17263b;--line:#2a3b53;--text:#eef4fb;--muted:#a7b7cb;--blue:#58b8ff;--green:#45d49a;--amber:#ffc66d;--red:#ff8585}
+    *{box-sizing:border-box} body{margin:0;min-height:100vh;background:radial-gradient(ellipse at top,#172c47 0,var(--bg) 58%);font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--text);display:grid;place-items:center;padding:24px}
+    .shell{width:min(760px,100%)} .brand{display:flex;align-items:center;gap:13px;margin-bottom:22px}.mark{width:46px;height:46px;border:1px solid #477097;border-radius:12px;display:grid;place-items:center;color:var(--blue);font-size:23px;background:#10243a}.brand small{display:block;color:var(--muted);font-size:12px;letter-spacing:.12em;text-transform:uppercase}.brand strong{display:block;font-size:18px;letter-spacing:.02em}.version{margin-left:auto;border:1px solid var(--line);background:#142237;color:#c8d7e9;border-radius:999px;padding:6px 10px;font-size:12px}
+    .card{background:linear-gradient(145deg,rgba(22,37,57,.98),rgba(15,26,42,.98));border:1px solid var(--line);border-radius:18px;padding:clamp(22px,5vw,38px);box-shadow:0 24px 70px #0005}.eyebrow{color:var(--green);font-weight:700;letter-spacing:.13em;text-transform:uppercase;font-size:11px}h1{font-size:clamp(26px,5vw,38px);line-height:1.12;margin:12px 0}p{color:var(--muted);line-height:1.65;margin:10px 0}.field{margin-top:25px}label{display:block;font-size:13px;font-weight:700;margin-bottom:9px}.inputrow{display:flex;gap:10px;flex-wrap:wrap}input{flex:1 1 250px;min-width:0;background:#091321;border:1px solid #415773;border-radius:10px;color:var(--text);padding:15px 14px;font:inherit;font-size:16px;outline:none}input:focus{border-color:var(--blue);box-shadow:0 0 0 3px #58b8ff22}button{border:0;border-radius:10px;padding:14px 19px;font:inherit;font-weight:800;cursor:pointer;background:var(--blue);color:#061523;min-height:50px}button:hover{filter:brightness(1.08)}button:focus-visible{outline:3px solid #fff;outline-offset:3px}.hint{font-size:12px;margin-top:9px}.status{display:none;margin-top:14px;padding:12px 14px;border-radius:10px;background:#2a1d1c;color:#ffd2c8;border:1px solid #70413a;font-size:13px;line-height:1.5}.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:27px}.step{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:13px}.step b{display:block;font-size:12px;color:var(--blue);margin-bottom:5px}.step span{font-size:12px;color:var(--muted);line-height:1.45}.notice{margin-top:18px;padding:13px 15px;border-left:3px solid var(--amber);background:#352a1a55;border-radius:0 9px 9px 0;color:#f5dfb8;font-size:13px;line-height:1.55}.footer{color:#7f91a7;text-align:center;font-size:11px;margin-top:18px}.footer a{color:#9bcfff;text-decoration:none}.footer a:hover{text-decoration:underline}@media(max-width:560px){body{padding:14px}.steps{grid-template-columns:1fr}.brand strong{font-size:15px}.version{font-size:10px}}
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <div class="brand"><div class="mark" aria-hidden="true">⌁</div><div><small>Industrial local supervisory</small><strong>Mitsubishi Q/R Series Dual-PLC</strong></div><span class="version">V2.2.1</span></div>
+    <section class="card" aria-labelledby="title">
+      <div class="eyebrow">ESP32 local gateway</div>
+      <h1 id="title">Open your PLC dashboard</h1>
+      <p>This public page is a launcher. The actual monitoring and control interface runs locally on the ESP32 gateway connected to your RUBY network. Enter the gateway address shown on its LCD or Arduino Serial Monitor.</p>
+      <div class="field">
+        <label for="gateway">ESP32 gateway address</label>
+        <div class="inputrow"><input id="gateway" type="text" inputmode="url" autocomplete="url" placeholder="http://192.168.3.238" aria-describedby="hint"><button id="open" type="button">Open Local Dashboard&nbsp; →</button></div>
+        <p class="hint" id="hint">Use the current ESP32 IP address. Example only: http://192.168.3.238</p>
+        <div class="status" id="status" role="alert" aria-live="polite"></div>
+      </div>
+      <div class="steps" aria-label="Connection steps">
+        <div class="step"><b>01 · POWER</b><span>Turn on RUBY, both PLCs and the ESP32 gateway.</span></div>
+        <div class="step"><b>02 · CONNECT</b><span>Connect your phone or laptop to the RUBY Wi-Fi network.</span></div>
+        <div class="step"><b>03 · OPEN</b><span>Enter the ESP32 IP and open its local dashboard.</span></div>
+      </div>
+      <div class="notice"><strong>Important:</strong> The hosted page cannot operate the PLCs directly. It navigates to the ESP32-hosted dashboard so normal monitoring and any commissioned control run on the same local origin. Do not expose the ESP32 using public port forwarding.</div>
+    </section>
+    <div class="footer">Primary offline entry: <strong>http://&lt;ESP32-IP&gt;/</strong> · If this public page cannot load without internet, open the local address directly.<br>Physical PLC writes remain disabled by default until local commissioning approval.</div>
+  </main>
+  <script>
+    (function(){
+      const input=document.getElementById('gateway');
+      const status=document.getElementById('status');
+      const key='qr_plc_esp32_gateway_url';
+      try{input.value=localStorage.getItem(key)||'';}catch(_){ }
+      function fail(message){status.textContent=message;status.style.display='block';}
+      function normalize(raw){
+        let value=String(raw||'').trim();
+        if(!value) throw new Error('Enter the ESP32 IP address shown on its LCD or Serial Monitor.');
+        if(!/^https?:\/\//i.test(value)) value='http://'+value;
+        let u; try{u=new URL(value);}catch(_){throw new Error('That gateway address is not a valid URL.');}
+        if(u.protocol!=='http:') throw new Error('The ESP32 local web server uses HTTP. Enter an address beginning with http://.');
+        if(u.username||u.password||u.search||u.hash) throw new Error('Enter only the gateway address, without credentials, query parameters or fragments.');
+        const h=u.hostname.replace(/^\[|\]$/g,'');
+        const octets=h.split('.').map(Number);
+        const ipv4=octets.length===4&&octets.every(n=>Number.isInteger(n)&&n>=0&&n<=255);
+        const private4=ipv4&&(octets[0]===10||(octets[0]===172&&octets[1]>=16&&octets[1]<=31)||(octets[0]===192&&octets[1]===168));
+        const localName=h==='localhost'||h.endsWith('.local');
+        if(!private4&&!localName) throw new Error('Use a private LAN address such as 192.168.3.x. Public gateway addresses are not accepted.');
+        u.pathname='/'; u.search=''; u.hash='';
+        return u.toString().replace(/\/$/,'');
+      }
+      function open(){
+        status.style.display='none';
+        try{const target=normalize(input.value);try{localStorage.setItem(key,target);}catch(_){ }
+          status.textContent='Opening '+target+'/ …';status.style.display='block';status.style.background='#133326';status.style.color='#bdf4d8';status.style.borderColor='#25684b';
+          // User-initiated top-level navigation: the launcher makes no cross-origin API fetch. The destination HMI talks to its own ESP32 origin.
+          window.location.assign(target+'/');
+        }catch(e){fail(e.message||'Unable to open the local dashboard.');}
+      }
+      document.getElementById('open').addEventListener('click',open);
+      input.addEventListener('keydown',e=>{if(e.key==='Enter')open();});
+    })();
+  </script>
+</body>
+</html>
