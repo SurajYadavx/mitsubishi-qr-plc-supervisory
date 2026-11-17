@@ -714,7 +714,14 @@ class TestPhase04B1AccuracyAudit(unittest.TestCase):
         self.assertIn("SIMULATION (VIRTUAL)", html)
         self.assertIn("INDEPENDENT DIGITAL I/O ARCHITECTURE", html)
         self.assertIn("Fail-Closed Safety", html)
-        self.assertIn("NOT IN USE", html)
+        self.assertIn('id="pill-mqtt"', html)
+        self.assertIn('id="pill-esp"', html)
+
+        js_res = self.client.get("/assets/js/app.js")
+        self.assertEqual(js_res.status_code, 200)
+        javascript = js_res.text
+        self.assertIn("setStatusPill('mqtt', 'off', 'Not in Use')", javascript)
+        self.assertIn("setStatusPill('esp', 'off', 'Not in Use')", javascript)
 
     def test_valid_zero_reading_is_preserved_with_good_quality(self):
         """Valid zero reading on boolean point must remain 0 and GOOD, never converted to null/error."""

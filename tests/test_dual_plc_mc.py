@@ -6,9 +6,11 @@ communication, bit packing/unpacking, allowlist enforcement, Y0 banning, PIN aut
 and read-back verification against the deterministic mock MC server.
 """
 
+import os
 import sys
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 # Ensure repo root on path
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -228,53 +230,54 @@ class TestDualPlcMcProtocol(unittest.TestCase):
 
     def test_fastapi_control_endpoint_lifecycle(self):
         """Verify FastAPI REST API control endpoint validation and responses."""
-        from agent.api import create_app
-        from agent.service import LocalAgentService
-        from core.config_loader import load_yaml_config
-        from fastapi.testclient import TestClient
+        with patch.dict(os.environ, {"LEGACY_SIMULATION_OPERATOR_PIN": "1234"}):
+            from agent.api import create_app
+            from agent.service import LocalAgentService
+            from core.config_loader import load_yaml_config
+            from fastapi.testclient import TestClient
 
-        cfg = load_yaml_config(REPO_ROOT / "config" / "devices.yaml")
-        service = LocalAgentService(config=cfg, simulation_mode=True)
-        app = create_app(service=service, enable_control=True)
-        client = TestClient(app)
+            cfg = load_yaml_config(REPO_ROOT / "config" / "devices.yaml")
+            service = LocalAgentService(config=cfg, simulation_mode=True)
+            app = create_app(service=service, enable_control=True)
+            client = TestClient(app)
 
-        # 1. System endpoint
-        sys_resp = client.get("/api/v1/system")
-        self.assertEqual(sys_resp.status_code, 200)
-        sys_data = sys_resp.json()
-        self.assertEqual(sys_data["firmware_version"], "2.0.0")
-        self.assertEqual(sys_data["network"]["ssid"], "RUBY")
+            # 1. System endpoint
+            sys_resp = client.get("/api/v1/system")
+            self.assertEqual(sys_resp.status_code, 200)
+            sys_data = sys_resp.json()
+            self.assertEqual(sys_data["firmware_version"], "2.0.0")
+            self.assertEqual(sys_data["network"]["ssid"], "RUBY")
 
-        # 2. Banned point Y0 -> 403 Forbidden
-        y0_resp = client.post(
-            "/api/v1/devices/melsec_q03/outputs/Y0/command",
-            json={"state": 1, "auth_pin": "1234"},
-        )
-        self.assertEqual(y0_resp.status_code, 403)
-        self.assertEqual(y0_resp.json()["status"], "FORBIDDEN_POINT")
+            # 2. Banned point Y0 -> 403 Forbidden
+            y0_resp = client.post(
+                "/api/v1/devices/melsec_q03/outputs/Y0/command",
+                json={"state": 1, "auth_pin": "1234"},
+            )
+            self.assertEqual(y0_resp.status_code, 403)
+            self.assertEqual(y0_resp.json()["status"], "FORBIDDEN_POINT")
 
-        # 3. Invalid PIN -> 401 Unauthorized
-        pin_resp = client.post(
-            "/api/v1/devices/melsec_q03/outputs/Y20/command",
-            json={"state": 1, "auth_pin": "bad_pin"},
-        )
-        self.assertEqual(pin_resp.status_code, 401)
+            # 3. Invalid PIN -> 401 Unauthorized
+            pin_resp = client.post(
+                "/api/v1/devices/melsec_q03/outputs/Y20/command",
+                json={"state": 1, "auth_pin": "bad_pin"},
+            )
+            self.assertEqual(pin_resp.status_code, 401)
 
-        # 4. Valid write to permitted Y20 in simulation -> 200 OK with OUTPUT_CONFIRMED
-        ok_resp = client.post(
-            "/api/v1/devices/melsec_q03/outputs/Y20/command",
-            json={"state": 1, "auth_pin": "1234"},
-        )
-        self.assertEqual(ok_resp.status_code, 200)
-        res_data = ok_resp.json()
-        self.assertTrue(res_data["success"])
-        self.assertTrue(res_data["verified"])
-        self.assertEqual(res_data["read_back_state"], 1)
-        self.assertEqual(res_data["status"], "OUTPUT_CONFIRMED")
-        # Canonical schema keys
-        self.assertIn("plc_end_code", res_data)
-        self.assertIn("readback_value", res_data)
-        self.assertIn("readback_verified", res_data)
+            # 4. Valid write to permitted Y20 in simulation -> 200 OK with OUTPUT_CONFIRMED
+            ok_resp = client.post(
+                "/api/v1/devices/melsec_q03/outputs/Y20/command",
+                json={"state": 1, "auth_pin": "1234"},
+            )
+            self.assertEqual(ok_resp.status_code, 200)
+            res_data = ok_resp.json()
+            self.assertTrue(res_data["success"])
+            self.assertTrue(res_data["verified"])
+            self.assertEqual(res_data["read_back_state"], 1)
+            self.assertEqual(res_data["status"], "OUTPUT_CONFIRMED")
+            # Canonical schema keys
+            self.assertIn("plc_end_code", res_data)
+            self.assertIn("readback_value", res_data)
+            self.assertIn("readback_verified", res_data)
 
     def test_fail_closed_physical_writes_gate(self):
         """V2.1 P0: writes_enabled=False must fail closed and reject write frames."""
@@ -407,28 +410,29 @@ class TestDualPlcMcProtocol(unittest.TestCase):
 
     def test_all_eight_outputs_fastapi_endpoints(self):
         """V2.2: Verify FastAPI REST API control endpoints for all 8 outputs Y20 to Y27."""
-        from agent.api import create_app
-        from agent.service import LocalAgentService
-        from core.config_loader import load_yaml_config
-        from fastapi.testclient import TestClient
+        with patch.dict(os.environ, {"LEGACY_SIMULATION_OPERATOR_PIN": "1234"}):
+            from agent.api import create_app
+            from agent.service import LocalAgentService
+            from core.config_loader import load_yaml_config
+            from fastapi.testclient import TestClient
 
-        cfg = load_yaml_config(REPO_ROOT / "config" / "devices.yaml")
-        service = LocalAgentService(config=cfg, simulation_mode=True)
-        app = create_app(service=service, enable_control=True)
-        client = TestClient(app)
+            cfg = load_yaml_config(REPO_ROOT / "config" / "devices.yaml")
+            service = LocalAgentService(config=cfg, simulation_mode=True)
+            app = create_app(service=service, enable_control=True)
+            client = TestClient(app)
 
-        for i in range(8):
-            point = f"Y2{i}"
-            resp = client.post(
-                f"/api/v1/devices/melsec_q03/outputs/{point}/command",
-                json={"state": 1, "auth_pin": "1234"},
-            )
-            self.assertEqual(resp.status_code, 200, f"Endpoint for {point} should return 200")
-            data = resp.json()
-            self.assertTrue(data["success"])
-            self.assertTrue(data["verified"])
-            self.assertEqual(data["point_id"], point)
-            self.assertEqual(data["read_back_state"], 1)
+            for i in range(8):
+                point = f"Y2{i}"
+                resp = client.post(
+                    f"/api/v1/devices/melsec_q03/outputs/{point}/command",
+                    json={"state": 1, "auth_pin": "1234"},
+                )
+                self.assertEqual(resp.status_code, 200, f"Endpoint for {point} should return 200")
+                data = resp.json()
+                self.assertTrue(data["success"])
+                self.assertTrue(data["verified"])
+                self.assertEqual(data["point_id"], point)
+                self.assertEqual(data["read_back_state"], 1)
 
 
 if __name__ == "__main__":
